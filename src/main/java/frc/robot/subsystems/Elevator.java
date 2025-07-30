@@ -12,6 +12,7 @@ import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.spark.config.SparkMaxConfig;
 
+import edu.wpi.first.math.controller.ElevatorFeedforward;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -23,7 +24,8 @@ public class Elevator extends SubsystemBase {
       private SparkMaxConfig rightMoterConfig, leftMoterConfig;
       private TimeOfFlight TOF = new TimeOfFlight(ElevatorIDs.TOF);
       public boolean cancelUp, cancelDown; 
-      PIDController Pid = new PIDController(0.7, 0, 0);  //0.7, 0, 0
+      PIDController Pid = new PIDController(0, 0, 0);//kp was 0.7
+      ElevatorFeedforward feedforward = new ElevatorFeedforward(0, 0, 0, 0);
 
   /** Creates a new Elevator. */
   public Elevator() {
@@ -46,12 +48,20 @@ public class Elevator extends SubsystemBase {
   @Override
   public void periodic() {
     // This method will be called once per scheduler run
-    cancelDown = getEncoder() <= ElevatorConstants.Min;
-    cancelUp = getEncoder() >= ElevatorConstants.Max;
+    cancelDown = getPosition() <= ElevatorConstants.Min;
+    cancelUp = getPosition() >= ElevatorConstants.Max;
 
     //smart dashboard
     SmartDashboard.putBoolean("Elevator/upwards movement disabled", cancelUp);
     SmartDashboard.putBoolean("Elevator/downwards movement disabled", cancelDown);
+    SmartDashboard.putNumber("Elevator/Position", getPosition());
+    SmartDashboard.putNumber("Elevator/Velocity", getVelocity());
+    //pid tuning, disable once complete
+    SmartDashboard.putData(Pid);
+    feedforward.setKs(SmartDashboard.getNumber("Elevator/FeedForward/Ks", 0));
+    feedforward.setKg(SmartDashboard.getNumber("Elevator/FeedForward/Kg", 0));
+    feedforward.setKv(SmartDashboard.getNumber("Elevator/FeedForward/Kv", 0));
+    feedforward.setKa(SmartDashboard.getNumber("Elevator/FeedForward/Ka", 0));
   }
 
   public void set(double speed) {
@@ -60,14 +70,40 @@ public class Elevator extends SubsystemBase {
     rightMoter.set(speed);
     leftMoter.set(speed);
   }
-   
-  public double getLeftEncoder(){
+  public void setSetpoint(double setpoint){
+    if (setpoint > ElevatorConstants.Max)setpoint = ElevatorConstants.Max;
+    else if (setpoint < ElevatorConstants.Min)setpoint = ElevatorConstants.Min;
+    SmartDashboard.putNumber("Elevator/PID/setpoint", setpoint);
+    double pid = Pid.calculate(getPosition(), setpoint);
+    pid += feedforward.calculate(setpoint);
+    SmartDashboard.putNumber("Elevator/PID/ Output", pid);
+    set(pid);
+  }
+  public void stop() {
+    rightMoter.stopMotor();
+    leftMoter.stopMotor();
+  }
+  
+  public double getLeftPosition(){
     return leftMoter.getEncoder().getPosition();
   }
-  public double getRightEncoder(){
+  public double getRightPosition(){
     return rightMoter.getEncoder().getPosition();
   }
-  public double getEncoder(){
-    return (getLeftEncoder() + getRightEncoder()) / 2;
+  public double getPosition(){
+    return (getLeftPosition() + getRightPosition()) / 2;
+  }
+  public double getLeftVelocity(){
+    return leftMoter.getEncoder().getVelocity();
+  }
+  public double getRightVelocity(){
+    return rightMoter.getEncoder().getVelocity();
+  }
+  public double getVelocity(){
+    return (getLeftVelocity() + getRightVelocity()) / 2;
+  }
+  public void resetEncoders() {
+    rightMoter.getEncoder().setPosition(0);
+    leftMoter.getEncoder().setPosition(0);
   }
 }

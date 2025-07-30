@@ -16,6 +16,12 @@ import edu.wpi.first.math.util.Units;
 /** Add your docs here. */
 public final class Constants {
 
+    public static final class controlConstants {
+        public static final double operatorLSDeadZone = 0.2; //Left Stick Deadzone
+        public static final double operatorRSDeadZone = 0.2; //Right Stick Deadzone
+        public static final double driverLSDeadZone = 0.2; //Left Stick Deadzone
+        public static final double driverRSDeadZone = 0.2; //Right Stick Deadzone
+    }
     public static final class ModuleConstants {
         public static final double neoFreeSpeedRPM = 5820;
         public static final int sparkMaxDataPort = -1;
